@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Postulantes con IA</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+        #chat-box { border: 1px solid #ccc; padding: 15px; min-height: 200px; margin-bottom: 10px; border-radius: 5px; background: #f9f9f9; }
+        input[type="text"] { width: 75%; padding: 10px; }
+        button { padding: 10px 15px; background-color: #0078D4; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <h2>Asistente de Recursos Humanos</h2>
+    <div id="chat-box">La respuesta de la IA aparecerá aquí...</div>
+    
+    <input type="text" id="pregunta" placeholder="Ej: ¿Quiénes tienen experiencia en Python?">
+    <button onclick="consultarIA()">Preguntar</button>
+
+    <script>
+        const scriptUrl = '<https://script.google.com/macros/s/AKfycbx4o5r68qea2EKhNS3q8ToCq3hYjnwbyA0bFnqsDfAuegdcoOEcJGWhcYpMMUX-H9es/exec>';
+
+        async function consultarIA() {
+            const pregunta = document.getElementById('pregunta').value;
+            const chatBox = document.getElementById('chat-box');
+            
+            if(!pregunta) return;
+            
+            chatBox.innerHTML = "<em>Consultando a la base de datos...</em>";
+
+            try {
+                const response = await fetch(scriptUrl, {
+                    method: 'POST',
+                    body: JSON.stringify({ pregunta: pregunta }),
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' } 
+                });
+                
+                const data = await response.json();
+                
+                if(data.respuesta) {
+                    chatBox.innerHTML = `<strong>IA:</strong> ${data.respuesta}`;
+                } else {
+                    chatBox.innerHTML = `<strong>Error:</strong> ${data.error}`;
+                }
+            } catch (error) {
+                chatBox.innerHTML = `<strong>Error de conexión.</strong>`;
+            }
+        }
+    </script>
+</body>
+</html>
