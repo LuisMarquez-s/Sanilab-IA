@@ -3,50 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consulta de Postulantes con IA</title>
+    <title>Portal de Recursos Humanos | Sanilab</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
-        #chat-box { border: 1px solid #ccc; padding: 15px; min-height: 200px; margin-bottom: 10px; border-radius: 5px; background: #f9f9f9; }
-        input[type="text"] { width: 75%; padding: 10px; }
-        button { padding: 10px 15px; background-color: #0078D4; color: white; border: none; cursor: pointer; }
+        :root {
+            --primary-color: #0056b3;
+            --bg-color: #f4f7f6;
+            --text-color: #333;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .chat-container {
+            background: white;
+            width: 100%;
+            max-width: 600px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            padding: 30px;
+            box-sizing: border-box;
+        }
+        h2 {
+            color: var(--primary-color);
+            margin-top: 0;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+            font-size: 24px;
+        }
+        #chat-box {
+            border: 1px solid #e0e0e0;
+            background: #fafafa;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            line-height: 1.5;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+        }
+        input[type="text"]:focus {
+            border-color: var(--primary-color);
+        }
+        button {
+            padding: 12px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #004494;
+        }
+        .mensaje-usuario { color: #555; margin-bottom: 10px; text-align: right; }
+        .mensaje-ia { color: #000; font-weight: 500; margin-bottom: 15px; border-left: 4px solid var(--primary-color); padding-left: 10px;}
     </style>
 </head>
 <body>
 
-    <h2>Asistente de Recursos Humanos</h2>
-    <div id="chat-box">La respuesta de la IA aparecerá aquí...</div>
-    
-    <input type="text" id="pregunta" placeholder="Ej: ¿Quiénes tienen experiencia en Python?">
-    <button onclick="consultarIA()">Preguntar</button>
+    <div class="chat-container">
+        <h2>Asistente IA - Reclutamiento</h2>
+        <div id="chat-box">
+            <div class="mensaje-ia"><em>Conectado a la base de postulantes. Escribe tu consulta abajo.</em></div>
+        </div>
+        
+        <div class="input-group">
+            <input type="text" id="pregunta" placeholder="Ej: ¿Quiénes tienen experiencia en Python?">
+            <button onclick="consultarIA()">Consultar</button>
+        </div>
+    </div>
 
     <script>
-        const scriptUrl = '<https://script.google.com/macros/s/AKfycbx4o5r68qea2EKhNS3q8ToCq3hYjnwbyA0bFnqsDfAuegdcoOEcJGWhcYpMMUX-H9es/exec>';
+        const scriptUrl = '<https://script.google.com/macros/s/AKfycbx4o5r68qea2EKhNS3q8ToCq3hYjnwbyA0bFnqsDfAuegdcoOEcJGWhcYpMMUX-H9es/exec>'; 
+
+        const inputPregunta = document.getElementById('pregunta');
+        
+        inputPregunta.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                consultarIA();
+            }
+        });
 
         async function consultarIA() {
-            const pregunta = document.getElementById('pregunta').value;
+            const pregunta = inputPregunta.value.trim();
             const chatBox = document.getElementById('chat-box');
             
             if(!pregunta) return;
             
-            chatBox.innerHTML = "<em>Consultando a la base de datos...</em>";
+            chatBox.innerHTML += `<div class="mensaje-usuario"><strong>Tú:</strong> ${pregunta}</div>`;
+            chatBox.innerHTML += `<div class="mensaje-ia" id="loading"><em>Consultando registros...</em></div>`;
+            
+            inputPregunta.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
 
             try {
                 const response = await fetch(scriptUrl, {
                     method: 'POST',
                     body: JSON.stringify({ pregunta: pregunta }),
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' } 
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
                 });
                 
                 const data = await response.json();
                 
+                document.getElementById('loading').remove();
+                
                 if(data.respuesta) {
-                    chatBox.innerHTML = `<strong>IA:</strong> ${data.respuesta}`;
+                    chatBox.innerHTML += `<div class="mensaje-ia"><strong>IA:</strong> ${data.respuesta}</div>`;
                 } else {
-                    chatBox.innerHTML = `<strong>Error:</strong> ${data.error}`;
+                    chatBox.innerHTML += `<div class="mensaje-ia" style="color:red; border-left-color: red;"><strong>Error del servidor:</strong> ${data.error}</div>`;
                 }
             } catch (error) {
-                chatBox.innerHTML = `<strong>Error de conexión.</strong>`;
+                if(document.getElementById('loading')) document.getElementById('loading').remove();
+                chatBox.innerHTML += `<div class="mensaje-ia" style="color:red; border-left-color: red;"><strong>Error de red:</strong> No se pudo conectar con Apps Script.</div>`;
             }
+            
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
     </script>
 </body>
