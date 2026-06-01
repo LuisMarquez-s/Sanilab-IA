@@ -31,7 +31,6 @@
             position: relative;
             overflow: hidden;
         }
-        /* grain + ambient shapes */
         body::before {
             content: "";
             position: absolute;
@@ -153,9 +152,40 @@
             border-color: var(--accent);
             box-shadow: 0 0 0 4px var(--accent-soft);
         }
+        
+        #btn-mic {
+            padding: 0 16px;
+            background: transparent;
+            color: var(--ink);
+            box-shadow: none;
+            border: 1px solid transparent;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 10px;
+        }
+        #btn-mic:hover {
+            background: rgba(0,0,0,0.05);
+            transform: none;
+            box-shadow: none;
+        }
+        #btn-mic.recording {
+            background: #fee2e2;
+            border-color: #ef4444;
+            animation: pulse-mic 1.5s infinite;
+        }
+        @keyframes pulse-mic {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
         input[type="text"] {
             flex: 1;
-            padding: 12px 14px;
+            padding: 12px 14px 12px 4px;
             border: none;
             background: transparent;
             font-family: 'Outfit', sans-serif;
@@ -164,7 +194,7 @@
             outline: none;
         }
         input[type="text"]::placeholder { color: #9aa39d; }
-        button {
+        button.btn-consultar {
             padding: 12px 24px;
             background: var(--accent);
             color: #fff;
@@ -178,12 +208,12 @@
             transition: transform 0.15s, background-color 0.25s, box-shadow 0.25s;
             box-shadow: 0 6px 14px -4px rgba(31,107,84,0.5);
         }
-        button:hover {
+        button.btn-consultar:hover {
             background: #185544;
             transform: translateY(-1px);
             box-shadow: 0 10px 20px -6px rgba(31,107,84,0.55);
         }
-        button:active { transform: translateY(0); }
+        button.btn-consultar:active { transform: translateY(0); }
         .footer-note {
             text-align: center;
             font-size: 11px;
@@ -199,22 +229,76 @@
         <span class="eyebrow"><span class="dot"></span>Sanilab · Reclutamiento</span>
         <h2>Asistente <span>IA</span></h2>
         <p class="subtitle">Consulta inteligente sobre la base de postulantes</p>
+        
         <div id="chat-box">
-            <div class="mensaje-ia"><em>Conectado a la base de postulantes. Escribe tu consulta abajo.</em></div>
+            <div class="mensaje-ia"><em>Conectado a la base de postulantes. Escribe o dicta tu consulta abajo.</em></div>
         </div>
         
         <div class="input-group">
-            <input type="text" id="pregunta" placeholder="¿Cuántos postulantes hay para sistemas?">
-            <button onclick="consultarIA()">Consultar</button>
+            <button id="btn-mic" onclick="toggleMic()" title="Dictar por voz" type="button">🎤</button>
+            <input type="text" id="pregunta" placeholder="Ej: ¿Cuántos postulantes hay para sistemas?">
+            <button class="btn-consultar" onclick="consultarIA()">Consultar</button>
         </div>
-        <p class="footer-note">Asistente IA</p>
+        <p class="footer-note">Desarrollado para Sanilab</p>
     </div>
 
     <script>
         const scriptUrl = 'https://script.google.com/macros/s/AKfycbx4o5r68qea2EKhNS3q8ToCq3hYjnwbyA0bFnqsDfAuegdcoOEcJGWhcYpMMUX-H9es/exec'; 
 
         const inputPregunta = document.getElementById('pregunta');
+        const btnMic = document.getElementById('btn-mic');
         
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+        let isRecording = false;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'es-PE';
+
+            recognition.onstart = function() {
+                isRecording = true;
+                btnMic.classList.add('recording');
+                inputPregunta.placeholder = "Escuchando...";
+                inputPregunta.value = "";
+            };
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                inputPregunta.value = transcript;
+            };
+
+            recognition.onerror = function(event) {
+                console.error("Error de micrófono:", event.error);
+                detenerMic();
+            };
+
+            recognition.onend = function() {
+                detenerMic();
+            };
+        } else {
+            btnMic.style.display = 'none';
+        }
+
+        function toggleMic() {
+            if (!recognition) {
+                alert("Tu navegador no soporta la función de dictado por voz.");
+                return;
+            }
+            if (isRecording) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        }
+
+        function detenerMic() {
+            isRecording = false;
+            btnMic.classList.remove('recording');
+            inputPregunta.placeholder = "Ej: ¿Cuántos postulantes hay para sistemas?";
+        }
         inputPregunta.addEventListener("keypress", function(event) {
             if (event.key === "Enter") {
                 event.preventDefault();
@@ -243,7 +327,8 @@
                 
                 const data = await response.json();
                 
-                document.getElementById('loading').remove();
+                const loadingBubble = document.getElementById('loading');
+                if (loadingBubble) loadingBubble.remove();
                 
                 if(data.respuesta) {
                     chatBox.innerHTML += `<div class="mensaje-ia"><strong>IA:</strong> ${data.respuesta}</div>`;
@@ -251,8 +336,10 @@
                     chatBox.innerHTML += `<div class="mensaje-ia" style="color:red; border-left-color: red;"><strong>Error del servidor:</strong> ${data.error}</div>`;
                 }
             } catch (error) {
-                if(document.getElementById('loading')) document.getElementById('loading').remove();
-                chatBox.innerHTML += `<div class="mensaje-ia" style="color:red; border-left-color: red;"><strong>Error de red:</strong> No se pudo conectar con Apps Script.</div>`;
+                const loadingBubble = document.getElementById('loading');
+                if (loadingBubble) loadingBubble.remove();
+                
+                chatBox.innerHTML += `<div class="mensaje-ia" style="color:red; border-left-color: red;"><strong>Error de red:</strong> No se pudo conectar con Apps Script. Verifica tu conexión o la URL.</div>`;
             }
             
             chatBox.scrollTop = chatBox.scrollHeight;
